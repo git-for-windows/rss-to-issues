@@ -50,7 +50,18 @@ const run = async () => {
     const octokit = getOctokit(core.getInput('github-token'))
 
     // Instantiate feed parser
-    const feed = await (new RSSParser({ xml2js: { trim: true } })).parseURL(core.getInput('feed'))
+    const rssParserOptions = {
+      headers: {
+        'User-Agent': 'rss-parser',
+        Accept: 'application/rss+xml',
+        // do not keep the connection alive
+        Connection: 'close'
+      },
+      xml2js: {
+        trim: true
+      }
+    }
+    const feed = await (new RSSParser(rssParserOptions)).parseURL(core.getInput('feed'))
     core.info(feed && feed.title)
     if (!feed.items || feed.items.length === 0) return
 
