@@ -23,6 +23,27 @@
                 "NODE_ENV": "development"
             },
             "console": "integratedTerminal"
+        },
+        {
+            "name": "Dry-Run",
+            "type": "node",
+            "request": "launch",
+            "runtimeArgs": [
+                "--inspect-brk",
+            ],
+            "args": [
+                "${workspaceRoot}/index.js",
+            ],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "NODE_ENV": "development",
+                "INPUT_DRY-RUN": "true",
+                "INPUT_FEED": "https://lizardbyte.github.io/feed.xml",
+                "INPUT_MAX-AGE": "120h",
+                "INPUT_GITHUB-TOKEN": "",
+            },
+            "console": "integratedTerminal"
         }
     ]
 }
