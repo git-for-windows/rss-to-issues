@@ -28,6 +28,10 @@ inputs:
     description: "Limit to feed items whose titles match this regular expression"
   content-pattern:
     description: "Limit to feed items whose contents match this regular expression"
+  url-only:
+    description: "If set, only the URL is added to the issue body"
+    default: 'false'
+    required: false
 outputs:
   issues:
     description: "issue IDs, comma separated"

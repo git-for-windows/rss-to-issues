@@ -56,6 +56,10 @@ Only create an issue if the content matches the specified [regular expression](h
 
 To _exclude_ items based on their content, you can use a negative lookahead. For example, to filter out all feed items whose text contains "TEST", use a regular expression like `/^(?!.*TEST)/`.
 
+### `url-only`
+
+If set, only the URL is added to the issue body
+
 ## Outputs
 
 ### `issues`
@@ -96,6 +100,7 @@ jobs:
           dry-run: false
           max-age: 48h
           labels: git
+          url-only: false
 ```
 
 ### Real Usage

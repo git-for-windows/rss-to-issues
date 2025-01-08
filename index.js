@@ -27,6 +27,8 @@ const run = async () => {
     if (dryRun) dryRun = dryRun === 'true'
     let aggregate = core.getInput('aggregate')
     if (aggregate) aggregate = aggregate === 'true'
+    let urlOnly = core.getInput('url-only')
+    if (urlOnly) urlOnly = urlOnly === 'true'
 
     // integer inputs
     let characterLimit = core.getInput('character-limit')
@@ -102,7 +104,7 @@ const run = async () => {
       }
 
       // Render issue content
-      const body = `${markdown || ''}\n${item.link ? `\n${item.link}` : ''}`
+      const body = urlOnly ? item.link : `${markdown || ''}\n${item.link ? `\n${item.link}` : ''}`
 
       // Default to creating an issue per item
       // Create first issue if aggregate
