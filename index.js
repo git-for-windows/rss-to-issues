@@ -22,14 +22,19 @@ const parseDurationInMilliseconds = (text) => {
 
 const run = async () => {
   try {
-    let issueTitlePrefix = core.getInput('prefix')
-    issueTitlePrefix = issueTitlePrefix ? issueTitlePrefix + ' ' : ''
+    // boolean inputs
     let dryRun = core.getInput('dry-run')
     if (dryRun) dryRun = dryRun === 'true'
     let aggregate = core.getInput('aggregate')
     if (aggregate) aggregate = aggregate === 'true'
+
+    // integer inputs
     let characterLimit = core.getInput('character-limit')
     if (characterLimit) characterLimit = parseInt(characterLimit)
+
+    // string inputs
+    let issueTitlePrefix = core.getInput('prefix')
+    issueTitlePrefix = issueTitlePrefix ? issueTitlePrefix + ' ' : ''
     const titlePattern = core.getInput('title-pattern')
     const contentPattern = core.getInput('content-pattern')
 
