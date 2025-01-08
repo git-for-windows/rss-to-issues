@@ -22,14 +22,21 @@ const parseDurationInMilliseconds = (text) => {
 
 const run = async () => {
   try {
-    let issueTitlePrefix = core.getInput('prefix')
-    issueTitlePrefix = issueTitlePrefix ? issueTitlePrefix + ' ' : ''
+    // boolean inputs
     let dryRun = core.getInput('dry-run')
     if (dryRun) dryRun = dryRun === 'true'
     let aggregate = core.getInput('aggregate')
     if (aggregate) aggregate = aggregate === 'true'
+    let urlOnly = core.getInput('url-only')
+    if (urlOnly) urlOnly = urlOnly === 'true'
+
+    // integer inputs
     let characterLimit = core.getInput('character-limit')
     if (characterLimit) characterLimit = parseInt(characterLimit)
+
+    // string inputs
+    let issueTitlePrefix = core.getInput('prefix')
+    issueTitlePrefix = issueTitlePrefix ? issueTitlePrefix + ' ' : ''
     const titlePattern = core.getInput('title-pattern')
     const contentPattern = core.getInput('content-pattern')
 
@@ -43,7 +50,18 @@ const run = async () => {
     const octokit = getOctokit(core.getInput('github-token'))
 
     // Instantiate feed parser
-    const feed = await (new RSSParser({ xml2js: { trim: true } })).parseURL(core.getInput('feed'))
+    const rssParserOptions = {
+      headers: {
+        'User-Agent': 'rss-parser',
+        Accept: 'application/rss+xml',
+        // do not keep the connection alive
+        Connection: 'close'
+      },
+      xml2js: {
+        trim: true
+      }
+    }
+    const feed = await (new RSSParser(rssParserOptions)).parseURL(core.getInput('feed'))
     core.info(feed && feed.title)
     if (!feed.items || feed.items.length === 0) return
 
@@ -97,7 +115,7 @@ const run = async () => {
       }
 
       // Render issue content
-      const body = `${markdown || ''}\n${item.link ? `\n${item.link}` : ''}`
+      const body = urlOnly ? item.link : `${markdown || ''}\n${item.link ? `\n${item.link}` : ''}`
 
       // Default to creating an issue per item
       // Create first issue if aggregate
