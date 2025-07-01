@@ -123,3 +123,65 @@ Signed-off-by: Johannes Schindelin <johannes.schindelin@gmx.de>
 https://github.com/git-for-windows/rss-to-issues/commit/394ee852b18c5e3bca536b585cbb95d32ce77057`
   })
 })
+
+test('curl -rc versions', async () => {
+  mockHTTPSGet.__RETURN__ = `<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/" xml:lang="en-US">
+  <id>tag:github.com,2008:https://github.com/curl/curl/releases</id>
+  <link type="text/html" rel="alternate" href="https://github.com/curl/curl/releases"/>
+  <link type="application/atom+xml" rel="self" href="https://github.com/curl/curl/releases.atom"/>
+  <title>Tags from curl</title>
+  <updated>2025-06-30T11:34:35Z</updated>
+  <entry>
+    <id>tag:github.com,2008:Repository/569041/rc-8_15_0-2</id>
+    <updated>2025-06-30T11:34:35Z</updated>
+    <link rel="alternate" type="text/html" href="https://github.com/curl/curl/releases/tag/rc-8_15_0-2"/>
+    <title>rc-8_15_0-2</title>
+    <content></content>
+    <author>
+      <name>bagder</name>
+    </author>
+    <media:thumbnail height="30" width="30" url="https://avatars.githubusercontent.com/u/177011?s=60&amp;v=4"/>
+  </entry>
+  <entry>
+    <id>tag:github.com,2008:Repository/569041/rc-8_15_0-1</id>
+    <updated>2025-06-21T09:50:00Z</updated>
+    <link rel="alternate" type="text/html" href="https://github.com/curl/curl/releases/tag/rc-8_15_0-1"/>
+    <title>rc-8_15_0-1</title>
+    <content></content>
+    <author>
+      <name>bagder</name>
+    </author>
+    <media:thumbnail height="30" width="30" url="https://avatars.githubusercontent.com/u/177011?s=60&amp;v=4"/>
+  </entry>
+  <entry>
+    <id>tag:github.com,2008:Repository/569041/curl-8_14_1</id>
+    <updated>2025-06-04T05:59:07Z</updated>
+    <link rel="alternate" type="text/html" href="https://github.com/curl/curl/releases/tag/curl-8_14_1"/>
+    <title>8.14.1</title>
+    <content></content>
+    <author>
+      <name>bagder</name>
+    </author>
+    <media:thumbnail height="30" width="30" url="https://avatars.githubusercontent.com/u/177011?s=60&amp;v=4"/>
+  </entry>
+</feed>`
+  octokit.rest.issues.listForRepo.mockReturnValueOnce({ data: [] })
+  Object.assign(core.__INPUTS__, {
+    'max-age': '9999d',
+    prefix: '[New curl version]',
+    'title-pattern': '^(?!rc-)'
+  })
+  await run()
+
+  expect(https.get).toHaveBeenCalledTimes(1)
+  expect(octokit.rest.issues.listForRepo).toHaveBeenCalledTimes(1)
+  expect(octokit.rest.issues.create).toHaveBeenCalledTimes(1)
+  expect(octokit.rest.issues.create).toHaveBeenCalledWith({
+    owner: 'owner',
+    repo: 'repo',
+    title: '[New curl version] 8.14.1',
+    body: '\n\nhttps://github.com/curl/curl/releases/tag/curl-8_14_1',
+    labels: undefined
+  })
+})
