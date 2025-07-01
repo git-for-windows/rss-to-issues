@@ -72,7 +72,7 @@ const run = async () => {
       owner: context.repo.owner,
       repo: context.repo.repo,
       state: 'all',
-      labels: labels
+      labels
     })
     core.debug(`${issues.length} issues`)
 
