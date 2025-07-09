@@ -87,11 +87,15 @@ const run = async () => {
     // Iterate
     let counter = 0
     for (const item of feed.items) {
-      const title = `${issueTitlePrefix}${item.title || (item.pubDate && new Date(item.pubDate).toUTCString())}`
-      if (titlePattern && !title.match(titlePattern)) {
-        core.debug(`Feed item skipped because it does not match the title pattern (${title})`)
+      if (!item.title && (titlePattern || !item.pubDate)) {
+        core.debug(`Feed item ${JSON.stringify(item)} skipped because it has no title`)
         continue
       }
+      if (titlePattern && !item.title.match(titlePattern)) {
+        core.debug(`Feed item skipped because it does not match the title pattern (${item.title})`)
+        continue
+      }
+      const title = `${issueTitlePrefix}${item.title || new Date(item.pubDate).toUTCString()}`
 
       core.debug(`Issue '${title}'`)
 
