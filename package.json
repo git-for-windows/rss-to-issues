@@ -1,6 +1,6 @@
 {
   "name": "rss-to-issues",
-  "version": "0.0.10",
+  "version": "0.0.12",
   "description": "This action create issues from a syndication feed (RSS or Atom)",
   "main": "index.js",
   "scripts": {
