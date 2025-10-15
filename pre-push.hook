@@ -45,18 +45,3 @@ do
         exit 1
     }
 done
-
-git diff --quiet dist/ ||
-die '`dist/` is dirty'
-
-base="$(git rev-list HEAD -1 -- dist/)"
-if test 0 -lt $(git rev-list --count ${base+$base..}HEAD -- \*.js)
-then
-    echo "Verifying that dist/ is up to date" >&2
-    npm run prepare &&
-    if ! git diff --quiet dist/
-    then
-        echo "Committing dist/ because it was not up to date" >&2
-        git commit -sm "npm run prepare" dist/
-    fi
-fi
