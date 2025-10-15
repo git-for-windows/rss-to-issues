@@ -74,12 +74,13 @@ const run = async () => {
     // Remove old items in feed
     feed.items = feed.items.filter(x => x.pubDate === undefined || limitTime < new Date(x.pubDate).getTime())
 
-    const { data: issues } = await octokit.rest.issues.listForRepo({
+    const { status, data: issues, ...rest } = await octokit.rest.issues.listForRepo({
       owner: context.repo.owner,
       repo: context.repo.repo,
       state: 'all',
       labels
     })
+    if (status !== 200) throw new Error(`Failed to list issues: ${status} ${JSON.stringify(rest)}`)
     core.debug(`${issues.length} issues`)
 
     const createdIssues = []
