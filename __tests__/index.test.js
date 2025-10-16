@@ -61,7 +61,7 @@ test('handles feed entries without titles', async () => {
   const date = '2021-06-19T01:01:29+12:00'
   mockHTTPSGet.__RETURN__ = `<feed xmlns="http://www.w3.org/2005/Atom"><entry><published>${date}</published><content type="html">TBD</content></entry></feed>`
   core.__INPUTS__['max-age'] = '9999d'
-  octokit.rest.issues.listForRepo.mockReturnValueOnce({ data: [] })
+  octokit.rest.issues.listForRepo.mockReturnValueOnce({ status: 200, data: [] })
   await run()
 
   expect(https.get).toHaveBeenCalledTimes(1)
@@ -105,7 +105,7 @@ Signed-off-by: Johannes Schindelin &amp;lt;johannes.schindelin@gmx.de&amp;gt;&lt
   </entry>
 </feed>
 `
-  octokit.rest.issues.listForRepo.mockReturnValueOnce({ data: [] })
+  octokit.rest.issues.listForRepo.mockReturnValueOnce({ status: 200, data: [] })
   await run()
 
   expect(octokit.rest.issues.create).toHaveBeenCalledWith({
@@ -166,7 +166,7 @@ test('curl -rc versions', async () => {
     <media:thumbnail height="30" width="30" url="https://avatars.githubusercontent.com/u/177011?s=60&amp;v=4"/>
   </entry>
 </feed>`
-  octokit.rest.issues.listForRepo.mockReturnValueOnce({ data: [] })
+  octokit.rest.issues.listForRepo.mockReturnValueOnce({ status: 200, data: [] })
   Object.assign(core.__INPUTS__, {
     'max-age': '9999d',
     prefix: '[New curl version]',
@@ -184,4 +184,19 @@ test('curl -rc versions', async () => {
     body: '\n\nhttps://github.com/curl/curl/releases/tag/curl-8_14_1',
     labels: undefined
   })
+})
+
+test('errors out if GitHub API returns 500', async () => {
+  mockHTTPSGet.__RETURN__ = `<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/" xml:lang="en-US">
+  <entry>
+    <title>Hello></title>
+    <published>${new Date().toUTCString()}</published>
+    <content type="html">TBD</content>
+  </entry>
+</feed>`
+  octokit.rest.issues.listForRepo.mockReturnValueOnce({ status: 500, data: [], message: 'Server Error' })
+  // Expect an error to be thrown
+  await expect(run()).rejects.toThrow('Failed to list issues: 500 {"message":"Server Error"}')
+  expect(octokit.rest.issues.listForRepo).toHaveBeenCalledTimes(1)
 })
