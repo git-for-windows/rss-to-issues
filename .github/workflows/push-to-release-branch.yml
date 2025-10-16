@@ -1,0 +1,84 @@
+name: Push GitHub Action to release branch
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'action.yml'
+      - 'index.js'
+      - 'package*.json'
+      - '.github/workflows/push-to-release-branch.yml'
+
+permissions:
+  contents: write
+
+env:
+  V: v0
+
+jobs:
+    push-to-release-branch:
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout code
+          uses: actions/checkout@v5
+          with:
+            persist-credentials: true
+        - name: Determine required Node.js version
+          run: |
+            sed -n 's/^ *using: "node\([0-9]\+\)".*/NODE_VERSION=\1/p' <action.yml >>$GITHUB_ENV
+        - name: Set up Node.js
+          uses: actions/setup-node@v5
+          with:
+            node-version: ${{ env.NODE_VERSION }}
+        - name: Install dependencies
+          run: npm ci
+        - name: Build dist/
+          run: npm run prepare
+        - name: Commit the result
+          id: commit
+          run: |
+            git config --local user.name "GitGitGadget CI" &&
+            git config --local user.email "ci@noreply.github.com" &&
+
+            if ! git fetch --tags origin $V:refs/remotes/origin/$V
+            then
+              # Starting from scratch
+              merge_head=HEAD &&
+              tag_name=$V.0.0
+            else
+              set -x &&
+              git for-each-ref &&
+              merge_head=refs/remotes/origin/$V &&
+              tag_name="$(git describe --match 'v[0-9]*' $merge_head)" &&
+              tag_name="${tag_name%%-*}" &&
+              case "$tag_name" in
+              $V.*) incr="${tag_name#*$V.0.}"; tag_name="$V.0.$(($incr + 1))";;
+              *)
+                tag_name=$V.0.0
+                ! git rev-parse --verify refs/tags/$tag_name || {
+                  echo "$V.0.0 already exists but is not reachable from $V?!?" >&2
+                  exit 1
+                }
+                ;;
+              esac
+            fi &&
+
+            # Now, add the generated files
+            git add -Af dist/ &&
+            # Remove the rest
+            git rm -r -- \* ':(exclude)dist/' ':(exclude)action.yml' &&
+
+            # Now make that fake merge commit
+            tree=$(git write-tree) &&
+            msg="Sync $V with ($(git show -s --pretty=reference HEAD))" &&
+            case "$merge_head" in
+            HEAD) commit=$(git commit-tree -m "$msg" $tree -p HEAD);;
+            *) commit=$(git commit-tree -m "$msg" $tree -p $merge_head -p HEAD);;
+            esac &&
+
+            # Now update the release branch and tag it
+            git update-ref refs/heads/$V $commit &&
+            git tag $tag_name $commit &&
+            echo "result=$tag_name" >>$GITHUB_OUTPUT
+        - name: Push to ${{ env.V }}
+          run: git push origin $V ${{ steps.commit.outputs.result }}
