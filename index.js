@@ -1,5 +1,3 @@
-const core = require('@actions/core')
-const { getOctokit, context } = require('@actions/github')
 const RSSParser = require('rss-parser')
 const html2md = require('html-to-md')
 
@@ -20,7 +18,28 @@ const parseDurationInMilliseconds = (text) => {
   return ms
 }
 
-const run = async () => {
+const defaultRssParserOptions = {
+  headers: {
+    'User-Agent': 'rss-parser',
+    Accept: 'application/rss+xml',
+    // do not keep the connection alive
+    Connection: 'close'
+  },
+  xml2js: {
+    trim: true
+  }
+}
+
+const defaultDeps = () => ({
+  core: require('@actions/core'),
+  getOctokit: require('@actions/github').getOctokit,
+  context: require('@actions/github').context,
+  parseFeed: (url) => new RSSParser(defaultRssParserOptions).parseURL(url)
+})
+
+const run = async (deps) => {
+  const { core, getOctokit, context, parseFeed } = deps || defaultDeps()
+
   // boolean inputs
   let dryRun = core.getInput('dry-run')
   if (dryRun) dryRun = dryRun === 'true'
@@ -48,19 +67,7 @@ const run = async () => {
   // Instantiate GitHub client
   const octokit = getOctokit(core.getInput('github-token'))
 
-  // Instantiate feed parser
-  const rssParserOptions = {
-    headers: {
-      'User-Agent': 'rss-parser',
-      Accept: 'application/rss+xml',
-      // do not keep the connection alive
-      Connection: 'close'
-    },
-    xml2js: {
-      trim: true
-    }
-  }
-  const feed = await (new RSSParser(rssParserOptions)).parseURL(core.getInput('feed'))
+  const feed = await parseFeed(core.getInput('feed'))
   core.info(feed && feed.title)
   if (!feed.items || feed.items.length === 0) return
 
@@ -166,7 +173,7 @@ const run = async () => {
 }
 
 if (require.main === module) {
-  run().catch(e => core.setFailed(e.message))
+  run().catch(e => require('@actions/core').setFailed(e.message))
 } else {
   module.exports = run
 }
