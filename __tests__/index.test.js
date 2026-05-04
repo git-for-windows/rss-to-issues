@@ -1,4 +1,3 @@
-const { expect, test, beforeEach } = require('@jest/globals')
 const RSSParser = require('rss-parser')
 
 const run = require('..')
@@ -10,21 +9,21 @@ const inputs = {}
 
 const makeDeps = () => {
   const issuesAPI = {
-    create: jest.fn(),
-    listForRepo: jest.fn()
+    create: vi.fn(),
+    listForRepo: vi.fn()
   }
   const octokit = { rest: { issues: issuesAPI } }
   return {
     core: {
       getInput: (key) => inputs[key],
-      setOutput: jest.fn(),
-      info: jest.fn(),
-      debug: jest.fn(),
-      warning: jest.fn()
+      setOutput: vi.fn(),
+      info: vi.fn(),
+      debug: vi.fn(),
+      warning: vi.fn()
     },
-    getOctokit: jest.fn(() => octokit),
+    getOctokit: vi.fn(() => octokit),
     context: { repo: { owner: 'owner', repo: 'repo' } },
-    parseFeed: jest.fn(),
+    parseFeed: vi.fn(),
     octokit,
     issuesAPI
   }
