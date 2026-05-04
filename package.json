@@ -34,11 +34,8 @@
   "devDependencies": {
     "@vercel/ncc": "^0.38.4",
     "@vitest/eslint-plugin": "^1.6.16",
-    "eslint": "^8.57.1",
-    "eslint-config-standard": "^17.1.0",
-    "eslint-plugin-import": "^2.32.0",
-    "eslint-plugin-node": "^11.1.0",
-    "eslint-plugin-promise": "^6.6.0",
+    "eslint": "^9.39.4",
+    "neostandard": "^0.13.0",
     "vitest": "^4.1.5"
   }
 }
