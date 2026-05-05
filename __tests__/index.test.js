@@ -229,3 +229,39 @@ test('respects max-age when expressed in seconds', async () => {
     title: 'recent item'
   }))
 })
+
+test('respects content-pattern filter', async () => {
+  for (const key of Object.keys(core.__INPUTS__)) delete core.__INPUTS__[key]
+  Object.assign(core.__INPUTS__, {
+    feed: 'https://test.feed',
+    'max-age': '9999d',
+    'github-token': 'TOKEN',
+    'content-pattern': 'should-include'
+  })
+
+  const date = new Date().toISOString()
+  mockHTTPSGet.__RETURN__ = `<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <entry>
+    <title>matches</title>
+    <published>${date}</published>
+    <content type="html">should-include this</content>
+  </entry>
+  <entry>
+    <title>does not match</title>
+    <published>${date}</published>
+    <content type="html">should-skip this</content>
+  </entry>
+</feed>`
+  octokit.rest.issues.listForRepo.mockReturnValueOnce({ status: 200, data: [] })
+
+  // The "does not match" entry exercises the `content-pattern` skip
+  // branch, which used to call a misspelled `core.debug$(...)` and
+  // crash with `TypeError: core.debug$ is not a function`.
+  await run()
+
+  expect(octokit.rest.issues.create).toHaveBeenCalledTimes(1)
+  expect(octokit.rest.issues.create).toHaveBeenCalledWith(expect.objectContaining({
+    title: 'matches'
+  }))
+})

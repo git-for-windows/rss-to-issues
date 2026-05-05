@@ -108,7 +108,7 @@ const run = async () => {
       const content = item.content || item.description || ''
 
       if (contentPattern && !content.match(contentPattern)) {
-        core.debug$(`Feed item skipped because it does not match the content pattern (${title})`)
+        core.debug(`Feed item skipped because it does not match the content pattern (${title})`)
         continue
       }
 
