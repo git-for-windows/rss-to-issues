@@ -36,5 +36,5 @@ outputs:
   issues:
     description: "issue IDs, comma separated"
 runs:
-  using: "node20"
+  using: "node24"
   main: "dist/index.js"
