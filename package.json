@@ -3,6 +3,7 @@
   "version": "0.0.13",
   "description": "This action create issues from a syndication feed (RSS or Atom)",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "lint": "eslint .",
     "prepare": "ncc build index.js -o dist --source-map",
@@ -26,8 +27,8 @@
   },
   "homepage": "https://github.com/git-for-windows/rss-to-issues#readme",
   "dependencies": {
-    "@actions/core": "^2.0.2",
-    "@actions/github": "^6.0.1",
+    "@actions/core": "^3.0.1",
+    "@actions/github": "^9.1.1",
     "html-to-md": "^0.8.8",
     "rss-parser": "^3.13.0"
   },

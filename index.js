@@ -1,5 +1,9 @@
-const RSSParser = require('rss-parser')
-const html2md = require('html-to-md')
+import * as core from '@actions/core'
+import { getOctokit, context } from '@actions/github'
+import RSSParser from 'rss-parser'
+import html2md from 'html-to-md'
+import { pathToFileURL } from 'node:url'
+import { realpathSync } from 'node:fs'
 
 const parseDurationInMilliseconds = (text) => {
   let ms = 0
@@ -31,9 +35,9 @@ const defaultRssParserOptions = {
 }
 
 const defaultDeps = () => ({
-  core: require('@actions/core'),
-  getOctokit: require('@actions/github').getOctokit,
-  context: require('@actions/github').context,
+  core,
+  getOctokit,
+  context,
   parseFeed: (url) => new RSSParser(defaultRssParserOptions).parseURL(url)
 })
 
@@ -172,8 +176,12 @@ const run = async (deps) => {
   core.setOutput('issues', createdIssues.map(item => item.id).join(','))
 }
 
-if (require.main === module) {
-  run().catch(e => require('@actions/core').setFailed(e.message))
-} else {
-  module.exports = run
+const isMainModule =
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href
+
+if (isMainModule) {
+  run().catch(e => core.setFailed(e.message))
 }
+
+export default run

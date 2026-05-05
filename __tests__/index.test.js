@@ -1,6 +1,6 @@
-const RSSParser = require('rss-parser')
+import RSSParser from 'rss-parser'
 
-const run = require('..')
+import run from '..'
 
 const xml2jsTrim = { xml2js: { trim: true } }
 const parseXml = (xml) => new RSSParser(xml2jsTrim).parseString(xml)
