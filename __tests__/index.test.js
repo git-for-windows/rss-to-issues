@@ -12,7 +12,7 @@ const makeDeps = () => {
     create: vi.fn(),
     listForRepo: vi.fn()
   }
-  const octokit = { rest: { issues: issuesAPI } }
+  const octokit = { paginate: vi.fn(), rest: { issues: issuesAPI } }
   return {
     core: {
       getInput: (key) => inputs[key],
@@ -45,7 +45,7 @@ test('handles feeds without any entries', async () => {
   await run(deps)
 
   expect(deps.parseFeed).toHaveBeenCalledTimes(1)
-  expect(deps.issuesAPI.listForRepo).not.toHaveBeenCalled()
+  expect(deps.octokit.paginate).not.toHaveBeenCalled()
   expect(deps.issuesAPI.create).not.toHaveBeenCalled()
 })
 
@@ -53,11 +53,11 @@ test('handles feed entries without titles', async () => {
   const date = '2021-06-19T01:01:29+12:00'
   deps.parseFeed.mockResolvedValueOnce(await parseXml(`<feed xmlns="http://www.w3.org/2005/Atom"><entry><published>${date}</published><content type="html">TBD</content></entry></feed>`))
   inputs['max-age'] = '9999d'
-  deps.issuesAPI.listForRepo.mockReturnValueOnce({ status: 200, data: [] })
+  deps.octokit.paginate.mockResolvedValueOnce([])
   await run(deps)
 
   expect(deps.parseFeed).toHaveBeenCalledTimes(1)
-  expect(deps.issuesAPI.listForRepo).toHaveBeenCalledTimes(1)
+  expect(deps.octokit.paginate).toHaveBeenCalledTimes(1)
   expect(deps.issuesAPI.create).toHaveBeenCalledWith({
     owner: 'owner',
     repo: 'repo',
@@ -97,7 +97,7 @@ Signed-off-by: Johannes Schindelin &amp;lt;johannes.schindelin@gmx.de&amp;gt;&lt
   </entry>
 </feed>
 `))
-  deps.issuesAPI.listForRepo.mockReturnValueOnce({ status: 200, data: [] })
+  deps.octokit.paginate.mockResolvedValueOnce([])
   await run(deps)
 
   expect(deps.issuesAPI.create).toHaveBeenCalledWith({
@@ -158,7 +158,7 @@ test('curl -rc versions', async () => {
     <media:thumbnail height="30" width="30" url="https://avatars.githubusercontent.com/u/177011?s=60&amp;v=4"/>
   </entry>
 </feed>`))
-  deps.issuesAPI.listForRepo.mockReturnValueOnce({ status: 200, data: [] })
+  deps.octokit.paginate.mockResolvedValueOnce([])
   Object.assign(inputs, {
     'max-age': '9999d',
     prefix: '[New curl version]',
@@ -167,7 +167,7 @@ test('curl -rc versions', async () => {
   await run(deps)
 
   expect(deps.parseFeed).toHaveBeenCalledTimes(1)
-  expect(deps.issuesAPI.listForRepo).toHaveBeenCalledTimes(1)
+  expect(deps.octokit.paginate).toHaveBeenCalledTimes(1)
   expect(deps.issuesAPI.create).toHaveBeenCalledTimes(1)
   expect(deps.issuesAPI.create).toHaveBeenCalledWith({
     owner: 'owner',
@@ -187,9 +187,9 @@ test('errors out if GitHub API returns 500', async () => {
     <content type="html">TBD</content>
   </entry>
 </feed>`))
-  deps.issuesAPI.listForRepo.mockReturnValueOnce({ status: 500, data: [], message: 'Server Error' })
-  await expect(run(deps)).rejects.toThrow('Failed to list issues: 500 {"message":"Server Error"}')
-  expect(deps.issuesAPI.listForRepo).toHaveBeenCalledTimes(1)
+  deps.octokit.paginate.mockRejectedValueOnce(new Error('500 Server Error'))
+  await expect(run(deps)).rejects.toThrow('Failed to list issues: 500 Server Error')
+  expect(deps.octokit.paginate).toHaveBeenCalledTimes(1)
 })
 
 test('rejects an invalid title-pattern with a clear error', async () => {
