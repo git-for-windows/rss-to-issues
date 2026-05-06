@@ -72,7 +72,7 @@ const run = async (deps) => {
   const octokit = getOctokit(core.getInput('github-token'))
 
   const feed = await parseFeed(core.getInput('feed'))
-  core.info(feed && feed.title)
+  core.info(feed?.title)
   if (!feed.items || feed.items.length === 0) return
 
   // Remove old items in feed
