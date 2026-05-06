@@ -214,3 +214,19 @@ test('emits issue numbers (not database IDs) on the `issues` output', async () =
 
   expect(deps.core.setOutput).toHaveBeenCalledWith('issues', '42')
 })
+
+test('aggregate dedup fires for items without isoDate when a newer issue exists', async () => {
+  Object.assign(inputs, { aggregate: 'true', prefix: '[New]' })
+  // Feed entry with no <published> or <updated>, so item.isoDate is undefined.
+  deps.parseFeed.mockResolvedValueOnce(await parseXml(
+    '<feed xmlns="http://www.w3.org/2005/Atom"><entry><title>x</title><content type="html">y</content></entry></feed>'
+  ))
+  deps.octokit.paginate.mockResolvedValueOnce([
+    { title: '[New] 5 new items', created_at: new Date().toISOString() }
+  ])
+
+  await run(deps)
+
+  expect(deps.issuesAPI.create).not.toHaveBeenCalled()
+  expect(deps.core.warning).toHaveBeenCalledWith('Newer issue with same prefix already exists')
+})

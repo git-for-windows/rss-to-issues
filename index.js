@@ -127,7 +127,12 @@ const run = async (deps) => {
       continue
     }
 
-    if (aggregate && issues.find(x => x.title.startsWith(issueTitlePrefix) && Date.parse(x.created_at) > Date.parse(item.isoDate))) {
+    // Treat an item with no parseable date as "older than any existing
+    // issue", so the dedup guard fires whenever a newer issue with the
+    // same prefix exists.
+    const parsedItemTime = Date.parse(item.isoDate)
+    const itemTime = Number.isNaN(parsedItemTime) ? -Infinity : parsedItemTime
+    if (aggregate && issues.find(x => x.title.startsWith(issueTitlePrefix) && Date.parse(x.created_at) > itemTime)) {
       core.warning('Newer issue with same prefix already exists')
       continue
     }
