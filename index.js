@@ -105,7 +105,7 @@ const run = async (deps) => {
       core.debug(`Feed item ${JSON.stringify(item)} skipped because it has no title`)
       continue
     }
-    if (titlePattern && !item.title.match(titlePattern)) {
+    if (titlePattern && !titlePattern.test(item.title)) {
       core.debug(`Feed item skipped because it does not match the title pattern (${item.title})`)
       continue
     }
@@ -126,7 +126,7 @@ const run = async (deps) => {
     // Issue Content
     const content = item.content || item.description || ''
 
-    if (contentPattern && !content.match(contentPattern)) {
+    if (contentPattern && !contentPattern.test(content)) {
       core.debug$(`Feed item skipped because it does not match the content pattern (${title})`)
       continue
     }
