@@ -183,7 +183,7 @@ const run = async (deps) => {
           body: issue.body,
           labels: issue.labels ? issue.labels.split(',') : undefined
         })
-        issue.id = data.id
+        issue.number = data.number
       } catch (e) {
         core.warning(`Failed to create issue ${issue.title}: ${e}`)
         continue
@@ -191,7 +191,7 @@ const run = async (deps) => {
     }
   }
 
-  core.setOutput('issues', createdIssues.map(item => item.id).join(','))
+  core.setOutput('issues', createdIssues.map(item => item.number).join(','))
 }
 
 const isMainModule =

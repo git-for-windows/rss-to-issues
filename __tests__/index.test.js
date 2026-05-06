@@ -203,3 +203,14 @@ test('rejects an empty max-age with a clear error', async () => {
   await expect(run(deps)).rejects.toThrow("Invalid 'max-age': ''")
   expect(deps.parseFeed).not.toHaveBeenCalled()
 })
+
+test('emits issue numbers (not database IDs) on the `issues` output', async () => {
+  const date = new Date().toISOString()
+  deps.parseFeed.mockResolvedValueOnce(await parseXml(`<feed xmlns="http://www.w3.org/2005/Atom"><entry><title>x</title><published>${date}</published><content type="html">y</content></entry></feed>`))
+  deps.octokit.paginate.mockResolvedValueOnce([])
+  deps.issuesAPI.create.mockResolvedValueOnce({ data: { id: 9876543210, number: 42 } })
+
+  await run(deps)
+
+  expect(deps.core.setOutput).toHaveBeenCalledWith('issues', '42')
+})
