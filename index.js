@@ -59,8 +59,17 @@ const run = async (deps) => {
   // string inputs
   let issueTitlePrefix = core.getInput('prefix')
   issueTitlePrefix = issueTitlePrefix ? issueTitlePrefix + ' ' : ''
-  const titlePattern = core.getInput('title-pattern')
-  const contentPattern = core.getInput('content-pattern')
+  const compilePattern = (name) => {
+    const raw = core.getInput(name)
+    if (!raw) return null
+    try {
+      return new RegExp(raw)
+    } catch (e) {
+      throw new Error(`Invalid '${name}': ${e.message}`)
+    }
+  }
+  const titlePattern = compilePattern('title-pattern')
+  const contentPattern = compilePattern('content-pattern')
 
   const limitTime = Date.now() - parseDurationInMilliseconds(core.getInput('max-age'))
   core.debug(`limitTime ${limitTime}`)

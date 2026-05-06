@@ -191,3 +191,9 @@ test('errors out if GitHub API returns 500', async () => {
   await expect(run(deps)).rejects.toThrow('Failed to list issues: 500 {"message":"Server Error"}')
   expect(deps.issuesAPI.listForRepo).toHaveBeenCalledTimes(1)
 })
+
+test('rejects an invalid title-pattern with a clear error', async () => {
+  inputs['title-pattern'] = '['
+  await expect(run(deps)).rejects.toThrow("Invalid 'title-pattern':")
+  expect(deps.parseFeed).not.toHaveBeenCalled()
+})
