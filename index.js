@@ -126,7 +126,7 @@ const run = async (deps) => {
 
     // truncate if characterLimit > 0
     if (characterLimit && markdown.length > characterLimit) {
-      markdown = `${markdown.substr(0, characterLimit)}…\n\n---\n## Would you like to know more?\nRead the full article on the following website:`
+      markdown = `${markdown.slice(0, characterLimit)}…\n\n---\n## Would you like to know more?\nRead the full article on the following website:`
     }
 
     // Render issue content
