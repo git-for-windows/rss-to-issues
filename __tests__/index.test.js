@@ -230,3 +230,18 @@ test('aggregate dedup fires for items without isoDate when a newer issue exists'
   expect(deps.issuesAPI.create).not.toHaveBeenCalled()
   expect(deps.core.warning).toHaveBeenCalledWith('Newer issue with same prefix already exists')
 })
+
+test('skips url-only items that have no link', async () => {
+  const date = new Date().toISOString()
+  inputs['url-only'] = 'true'
+  // Entry with no <link> element.
+  deps.parseFeed.mockResolvedValueOnce(await parseXml(
+    `<feed xmlns="http://www.w3.org/2005/Atom"><entry><title>x</title><published>${date}</published><content type="html">y</content></entry></feed>`
+  ))
+  deps.octokit.paginate.mockResolvedValueOnce([])
+
+  await run(deps)
+
+  expect(deps.issuesAPI.create).not.toHaveBeenCalled()
+  expect(deps.core.warning).toHaveBeenCalledWith(expect.stringContaining('url-only is true but the item has no link'))
+})

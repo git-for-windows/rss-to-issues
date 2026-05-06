@@ -137,6 +137,11 @@ const run = async (deps) => {
       continue
     }
 
+    if (urlOnly && !item.link) {
+      core.warning(`Skipping '${title}' because url-only is true but the item has no link`)
+      continue
+    }
+
     // Issue Content
     const content = item.content || item.description || ''
 
