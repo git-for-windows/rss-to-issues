@@ -71,7 +71,11 @@ const run = async (deps) => {
   const titlePattern = compilePattern('title-pattern')
   const contentPattern = compilePattern('content-pattern')
 
-  const limitTime = Date.now() - parseDurationInMilliseconds(core.getInput('max-age'))
+  const maxAgeRaw = core.getInput('max-age')
+  if (!maxAgeRaw || !/^\s*(\d+\s*(ms|s|m|h|d)\s*)+$/.test(maxAgeRaw)) {
+    throw new Error(`Invalid 'max-age': '${maxAgeRaw}'`)
+  }
+  const limitTime = Date.now() - parseDurationInMilliseconds(maxAgeRaw)
   core.debug(`limitTime ${limitTime}`)
 
   const labels = core.getInput('labels')

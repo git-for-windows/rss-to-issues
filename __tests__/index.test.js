@@ -197,3 +197,9 @@ test('rejects an invalid title-pattern with a clear error', async () => {
   await expect(run(deps)).rejects.toThrow("Invalid 'title-pattern':")
   expect(deps.parseFeed).not.toHaveBeenCalled()
 })
+
+test('rejects an empty max-age with a clear error', async () => {
+  inputs['max-age'] = ''
+  await expect(run(deps)).rejects.toThrow("Invalid 'max-age': ''")
+  expect(deps.parseFeed).not.toHaveBeenCalled()
+})
