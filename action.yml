@@ -34,7 +34,7 @@ inputs:
     required: false
 outputs:
   issues:
-    description: "issue IDs, comma separated"
+    description: "issue numbers, comma separated"
 runs:
   using: "node24"
   main: "dist/index.js"

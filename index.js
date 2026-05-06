@@ -59,10 +59,23 @@ const run = async (deps) => {
   // string inputs
   let issueTitlePrefix = core.getInput('prefix')
   issueTitlePrefix = issueTitlePrefix ? issueTitlePrefix + ' ' : ''
-  const titlePattern = core.getInput('title-pattern')
-  const contentPattern = core.getInput('content-pattern')
+  const compilePattern = (name) => {
+    const raw = core.getInput(name)
+    if (!raw) return null
+    try {
+      return new RegExp(raw)
+    } catch (e) {
+      throw new Error(`Invalid '${name}': ${e.message}`)
+    }
+  }
+  const titlePattern = compilePattern('title-pattern')
+  const contentPattern = compilePattern('content-pattern')
 
-  const limitTime = Date.now() - parseDurationInMilliseconds(core.getInput('max-age'))
+  const maxAgeRaw = core.getInput('max-age')
+  if (!maxAgeRaw || !/^\s*(\d+\s*(ms|s|m|h|d)\s*)+$/.test(maxAgeRaw)) {
+    throw new Error(`Invalid 'max-age': '${maxAgeRaw}'`)
+  }
+  const limitTime = Date.now() - parseDurationInMilliseconds(maxAgeRaw)
   core.debug(`limitTime ${limitTime}`)
 
   const labels = core.getInput('labels')
@@ -72,19 +85,24 @@ const run = async (deps) => {
   const octokit = getOctokit(core.getInput('github-token'))
 
   const feed = await parseFeed(core.getInput('feed'))
-  core.info(feed && feed.title)
+  core.info(feed?.title)
   if (!feed.items || feed.items.length === 0) return
 
   // Remove old items in feed
   feed.items = feed.items.filter(x => x.pubDate === undefined || limitTime < new Date(x.pubDate).getTime())
 
-  const { status, data: issues, ...rest } = await octokit.rest.issues.listForRepo({
-    owner: context.repo.owner,
-    repo: context.repo.repo,
-    state: 'all',
-    labels
-  })
-  if (status !== 200) throw new Error(`Failed to list issues: ${status} ${JSON.stringify(rest)}`)
+  let issues
+  try {
+    issues = await octokit.paginate(octokit.rest.issues.listForRepo, {
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      state: 'all',
+      labels,
+      per_page: 100
+    })
+  } catch (e) {
+    throw new Error(`Failed to list issues: ${e.message ?? e}`)
+  }
   core.debug(`${issues.length} issues`)
 
   const createdIssues = []
@@ -96,7 +114,7 @@ const run = async (deps) => {
       core.debug(`Feed item ${JSON.stringify(item)} skipped because it has no title`)
       continue
     }
-    if (titlePattern && !item.title.match(titlePattern)) {
+    if (titlePattern && !titlePattern.test(item.title)) {
       core.debug(`Feed item skipped because it does not match the title pattern (${item.title})`)
       continue
     }
@@ -109,15 +127,25 @@ const run = async (deps) => {
       continue
     }
 
-    if (aggregate && issues.find(x => x.title.startsWith(issueTitlePrefix) && Date.parse(x.created_at) > Date.parse(item.isoDate))) {
+    // Treat an item with no parseable date as "older than any existing
+    // issue", so the dedup guard fires whenever a newer issue with the
+    // same prefix exists.
+    const parsedItemTime = Date.parse(item.isoDate)
+    const itemTime = Number.isNaN(parsedItemTime) ? -Infinity : parsedItemTime
+    if (aggregate && issues.find(x => x.title.startsWith(issueTitlePrefix) && Date.parse(x.created_at) > itemTime)) {
       core.warning('Newer issue with same prefix already exists')
+      continue
+    }
+
+    if (urlOnly && !item.link) {
+      core.warning(`Skipping '${title}' because url-only is true but the item has no link`)
       continue
     }
 
     // Issue Content
     const content = item.content || item.description || ''
 
-    if (contentPattern && !content.match(contentPattern)) {
+    if (contentPattern && !contentPattern.test(content)) {
       core.debug$(`Feed item skipped because it does not match the content pattern (${title})`)
       continue
     }
@@ -126,7 +154,7 @@ const run = async (deps) => {
 
     // truncate if characterLimit > 0
     if (characterLimit && markdown.length > characterLimit) {
-      markdown = `${markdown.substr(0, characterLimit)}…\n\n---\n## Would you like to know more?\nRead the full article on the following website:`
+      markdown = `${markdown.slice(0, characterLimit)}…\n\n---\n## Would you like to know more?\nRead the full article on the following website:`
     }
 
     // Render issue content
@@ -165,7 +193,7 @@ const run = async (deps) => {
           body: issue.body,
           labels: issue.labels ? issue.labels.split(',') : undefined
         })
-        issue.id = data.id
+        issue.number = data.number
       } catch (e) {
         core.warning(`Failed to create issue ${issue.title}: ${e}`)
         continue
@@ -173,7 +201,7 @@ const run = async (deps) => {
     }
   }
 
-  core.setOutput('issues', createdIssues.map(item => item.id).join(','))
+  core.setOutput('issues', createdIssues.map(item => item.number).join(','))
 }
 
 const isMainModule =
