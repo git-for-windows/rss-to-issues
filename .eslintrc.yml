@@ -2,9 +2,10 @@ env:
   browser: true
   commonjs: true
   es2021: true
+  '@vitest/env': true
 extends:
   - standard
-  - plugin:jest/recommended
+  - plugin:@vitest/legacy-recommended
 parserOptions:
   ecmaVersion: 12
 rules: {}

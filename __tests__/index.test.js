@@ -1,72 +1,64 @@
-const { expect, test } = require('@jest/globals')
-const https = require('https')
-
-jest.mock('@actions/core')
-jest.mock('@actions/github')
-
-const core = require('@actions/core')
-const { getOctokit, context } = require('@actions/github')
+const RSSParser = require('rss-parser')
 
 const run = require('..')
 
-core.getInput = (key) => core.__INPUTS__[key]
-core.__INPUTS__ = {
-  feed: 'https://test.feed',
-  'max-age': '48h',
-  'github-token': 'TOKEN'
-}
+const xml2jsTrim = { xml2js: { trim: true } }
+const parseXml = (xml) => new RSSParser(xml2jsTrim).parseString(xml)
 
-const mockHTTPSGet = {
-  write: jest.fn(),
-  on: jest.fn().mockImplementation((event, cb) => {
-    if (event === 'end') {
-      cb()
-    } else if (event === 'data') {
-      cb(mockHTTPSGet.__RETURN__)
-    }
-  }),
-  end: jest.fn(),
-  setEncoding: jest.fn(),
-  headers: {
-    'content-length': 0
+const inputs = {}
+
+const makeDeps = () => {
+  const issuesAPI = {
+    create: vi.fn(),
+    listForRepo: vi.fn()
+  }
+  const octokit = { rest: { issues: issuesAPI } }
+  return {
+    core: {
+      getInput: (key) => inputs[key],
+      setOutput: vi.fn(),
+      info: vi.fn(),
+      debug: vi.fn(),
+      warning: vi.fn()
+    },
+    getOctokit: vi.fn(() => octokit),
+    context: { repo: { owner: 'owner', repo: 'repo' } },
+    parseFeed: vi.fn(),
+    octokit,
+    issuesAPI
   }
 }
-https.get = jest.fn().mockImplementation((url, callback) => {
-  mockHTTPSGet.headers['content-length'] = mockHTTPSGet.__RETURN__.length
-  callback(mockHTTPSGet)
-  return mockHTTPSGet
+
+let deps
+beforeEach(() => {
+  for (const key of Object.keys(inputs)) delete inputs[key]
+  Object.assign(inputs, {
+    feed: 'https://test.feed',
+    'max-age': '48h',
+    'github-token': 'TOKEN'
+  })
+  deps = makeDeps()
 })
 
-const octokit = {
-  rest: {
-    issues: {
-      create: jest.fn(),
-      listForRepo: jest.fn()
-    }
-  }
-}
-getOctokit.mockImplementation(() => octokit)
-context.repo = { owner: 'owner', repo: 'repo' }
-
 test('handles feeds without any entries', async () => {
-  mockHTTPSGet.__RETURN__ = '<feed xmlns="http://www.w3.org/2005/Atom" />'
-  await run()
+  deps.parseFeed.mockResolvedValueOnce(await parseXml('<feed xmlns="http://www.w3.org/2005/Atom" />'))
+  await run(deps)
 
-  expect(https.get).toHaveBeenCalledTimes(1)
-  expect(octokit.rest.issues.listForRepo).not.toHaveBeenCalled()
-  expect(octokit.rest.issues.create).not.toHaveBeenCalled()
+  expect(deps.parseFeed).toHaveBeenCalledTimes(1)
+  expect(deps.issuesAPI.listForRepo).not.toHaveBeenCalled()
+  expect(deps.issuesAPI.create).not.toHaveBeenCalled()
 })
 
 test('handles feed entries without titles', async () => {
   const date = '2021-06-19T01:01:29+12:00'
-  mockHTTPSGet.__RETURN__ = `<feed xmlns="http://www.w3.org/2005/Atom"><entry><published>${date}</published><content type="html">TBD</content></entry></feed>`
-  core.__INPUTS__['max-age'] = '9999d'
-  octokit.rest.issues.listForRepo.mockReturnValueOnce({ status: 200, data: [] })
-  await run()
+  deps.parseFeed.mockResolvedValueOnce(await parseXml(`<feed xmlns="http://www.w3.org/2005/Atom"><entry><published>${date}</published><content type="html">TBD</content></entry></feed>`))
+  inputs['max-age'] = '9999d'
+  deps.issuesAPI.listForRepo.mockReturnValueOnce({ status: 200, data: [] })
+  await run(deps)
 
-  expect(https.get).toHaveBeenCalledTimes(1)
-  expect(octokit.rest.issues.listForRepo).toHaveBeenCalledTimes(1)
-  expect(octokit.rest.issues.create).toHaveBeenCalledWith({
+  expect(deps.parseFeed).toHaveBeenCalledTimes(1)
+  expect(deps.issuesAPI.listForRepo).toHaveBeenCalledTimes(1)
+  expect(deps.issuesAPI.create).toHaveBeenCalledWith({
     owner: 'owner',
     repo: 'repo',
     title: new Date(date).toUTCString(),
@@ -76,7 +68,7 @@ test('handles feed entries without titles', async () => {
 
 test('html to markdown conversion', async () => {
   const date = new Date().toISOString()
-  mockHTTPSGet.__RETURN__ = `<?xml version="1.0" encoding="UTF-8"?>
+  deps.parseFeed.mockResolvedValueOnce(await parseXml(`<?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/" xml:lang="en-US">
   <id>tag:github.com,2008:/git-for-windows/rss-to-issues/commits/main</id>
   <link type="text/html" rel="alternate" href="https://github.com/git-for-windows/rss-to-issues/commits/main"/>
@@ -104,11 +96,11 @@ Signed-off-by: Johannes Schindelin &amp;lt;johannes.schindelin@gmx.de&amp;gt;&lt
     </content>
   </entry>
 </feed>
-`
-  octokit.rest.issues.listForRepo.mockReturnValueOnce({ status: 200, data: [] })
-  await run()
+`))
+  deps.issuesAPI.listForRepo.mockReturnValueOnce({ status: 200, data: [] })
+  await run(deps)
 
-  expect(octokit.rest.issues.create).toHaveBeenCalledWith({
+  expect(deps.issuesAPI.create).toHaveBeenCalledWith({
     owner: 'owner',
     repo: 'repo',
     title: 'ci(release-tags): use newer versions of Actions',
@@ -125,7 +117,7 @@ https://github.com/git-for-windows/rss-to-issues/commit/394ee852b18c5e3bca536b58
 })
 
 test('curl -rc versions', async () => {
-  mockHTTPSGet.__RETURN__ = `<?xml version="1.0" encoding="UTF-8"?>
+  deps.parseFeed.mockResolvedValueOnce(await parseXml(`<?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/" xml:lang="en-US">
   <id>tag:github.com,2008:https://github.com/curl/curl/releases</id>
   <link type="text/html" rel="alternate" href="https://github.com/curl/curl/releases"/>
@@ -165,19 +157,19 @@ test('curl -rc versions', async () => {
     </author>
     <media:thumbnail height="30" width="30" url="https://avatars.githubusercontent.com/u/177011?s=60&amp;v=4"/>
   </entry>
-</feed>`
-  octokit.rest.issues.listForRepo.mockReturnValueOnce({ status: 200, data: [] })
-  Object.assign(core.__INPUTS__, {
+</feed>`))
+  deps.issuesAPI.listForRepo.mockReturnValueOnce({ status: 200, data: [] })
+  Object.assign(inputs, {
     'max-age': '9999d',
     prefix: '[New curl version]',
     'title-pattern': '^(?!rc-)'
   })
-  await run()
+  await run(deps)
 
-  expect(https.get).toHaveBeenCalledTimes(1)
-  expect(octokit.rest.issues.listForRepo).toHaveBeenCalledTimes(1)
-  expect(octokit.rest.issues.create).toHaveBeenCalledTimes(1)
-  expect(octokit.rest.issues.create).toHaveBeenCalledWith({
+  expect(deps.parseFeed).toHaveBeenCalledTimes(1)
+  expect(deps.issuesAPI.listForRepo).toHaveBeenCalledTimes(1)
+  expect(deps.issuesAPI.create).toHaveBeenCalledTimes(1)
+  expect(deps.issuesAPI.create).toHaveBeenCalledWith({
     owner: 'owner',
     repo: 'repo',
     title: '[New curl version] 8.14.1',
@@ -187,16 +179,15 @@ test('curl -rc versions', async () => {
 })
 
 test('errors out if GitHub API returns 500', async () => {
-  mockHTTPSGet.__RETURN__ = `<?xml version="1.0" encoding="UTF-8"?>
+  deps.parseFeed.mockResolvedValueOnce(await parseXml(`<?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/" xml:lang="en-US">
   <entry>
     <title>Hello></title>
     <published>${new Date().toUTCString()}</published>
     <content type="html">TBD</content>
   </entry>
-</feed>`
-  octokit.rest.issues.listForRepo.mockReturnValueOnce({ status: 500, data: [], message: 'Server Error' })
-  // Expect an error to be thrown
-  await expect(run()).rejects.toThrow('Failed to list issues: 500 {"message":"Server Error"}')
-  expect(octokit.rest.issues.listForRepo).toHaveBeenCalledTimes(1)
+</feed>`))
+  deps.issuesAPI.listForRepo.mockReturnValueOnce({ status: 500, data: [], message: 'Server Error' })
+  await expect(run(deps)).rejects.toThrow('Failed to list issues: 500 {"message":"Server Error"}')
+  expect(deps.issuesAPI.listForRepo).toHaveBeenCalledTimes(1)
 })
