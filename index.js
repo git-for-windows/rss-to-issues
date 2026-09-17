@@ -6,11 +6,11 @@ const html2md = require('html-to-md')
 const parseDurationInMilliseconds = (text) => {
   let ms = 0
 
-  const milliSeconds = text.match(/(\d+)\s*m/)
+  const milliSeconds = text.match(/(\d+)\s*ms/)
   if (milliSeconds) ms += parseInt(milliSeconds[1])
-  const seconds = text.match(/(\d+)\s*m/)
+  const seconds = text.match(/(\d+)\s*s(?!\w)/)
   if (seconds) ms += parseInt(seconds[1]) * 1000
-  const minutes = text.match(/(\d+)\s*m/)
+  const minutes = text.match(/(\d+)\s*m(?!s)/)
   if (minutes) ms += parseInt(minutes[1]) * 60000
   const hours = text.match(/(\d+)\s*h/)
   if (hours) ms += parseInt(hours[1]) * 3600000
@@ -108,7 +108,7 @@ const run = async () => {
       const content = item.content || item.description || ''
 
       if (contentPattern && !content.match(contentPattern)) {
-        core.debug$(`Feed item skipped because it does not match the content pattern (${title})`)
+        core.debug(`Feed item skipped because it does not match the content pattern (${title})`)
         continue
       }
 
